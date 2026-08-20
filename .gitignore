@@ -1,0 +1,88 @@
+.env
+.env.local
+# ⚠️ Every other variant too — a hand-made `.env.bak.20260816` holding a
+# production `DATABASE_URL` is the same secret in a file nobody thought to
+# ignore, and `railway up` uploads the WORKING TREE. Neither of the two lines
+# above matched one. `.env.example` is committed and stays committed.
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+.venv/
+venv/
+frames/
+*.sqlite
+.DS_Store
+
+# Working plans — documents written to be executed against this repo and spent
+# once they were. Untracked 2026-08-20, before this went public. They are
+# instructions to an agent rather than documentation of the result: what a plan
+# proposed and what actually shipped diverge, and a reader cannot tell which
+# from the file. **The result is what `MEASUREMENTS.md` and the CLAUDE.md files
+# are for**, and the two that were here are in the archived pre-public history.
+docs/plan-*.md
+
+# the UI: source lives in web/src, everything below is generated
+web/node_modules/
+web/.next/
+web/out/
+# the staged export api.py serves at "/". Build output, never source —
+# `cd web && npm run prod:local` puts it here.
+waterline/web/
+
+# Source art for the rat: a 20MB rigged FBX and 23MB of 4K PBR maps.
+# What ships is web/public/rat/ — four stills (37KB) and four animated loops
+# (760KB), all baked offline. The model is licensed to be rendered, not
+# redistributed, and 44MB of binaries is a permanent history cost on a repo
+# whose basemap is 27KB of committed numbers.
+# Regenerate with `web/scripts/rat-bake.py` (bake+webp, then loop+loopwebp).
+# (`frames/` above already covers assets/black-rat/frames/ at any depth —
+#  which is where the 84 loop renders and the 63MB .blend cache land.)
+assets/black-rat/
+
+# Candidates for the OTHER rat — the graffiti one on the card backs. Four 1024²
+# diffusion outputs and their keyed previews, ~6.5MB, from
+# `web/scripts/rat-graffiti.py generate`. Only the picked one ships, as
+# web/public/rat/rat-graffiti.webp (86KB), and that IS committed. Same trade as
+# the black-rat source above: keep the input reproducible from a script, keep
+# the megabytes out of history.
+web/scripts/.rat-graffiti/
+
+# The landing and sign-in photographs at camera resolution — seven 5504×3072
+# JPEGs, 79MB. What ships is web/public/photoz/*.webp, seven files at 2200px
+# and 2.0MB the set, and those ARE committed. Same trade as the two above:
+# keep the source on disk, keep the megabytes out of history.
+#
+#   cd web/public/photoz
+#   for f in ../../photoz-src/*.jpg; do
+#     cwebp -q 72 -resize 2200 0 -m 6 -metadata none "$f" \
+#       -o "$(basename "${f%.jpg}").webp"
+#   done
+web/photoz-src/
+
+# Screens the claude.ai/design agent built, downloaded back here as single-file
+# bundles — ~1.3MB each, inlined CSS and fonts, and the browser numbers the
+# duplicates. Same trade as the three above: keep the megabytes out of history.
+#
+# ⚠️ These are EVIDENCE and the evidence is worth reading before it is deleted.
+# `Estuary-Dashboard-2A` is where the two live cascade defects were found — the
+# thirteen tokens frozen by `var()` at `:root`, and the unlayered `*` from
+# `@neondatabase/auth` outranking every border-colour utility in the app. `tsc`,
+# `vitest` and `next build` were all green through both. What SURVIVES a delete
+# is the write-up: the root CLAUDE.md's design-system section, the
+# `:root, [data-palette]` block in globals.css, and the split Tailwind import.
+Estuary-Dashboard-*.html
+
+
+# The two standalone mockups `/` and `/about` were built from, 2026-08-16 —
+# single-file bundles from the same design surface, ~1.9MB the pair, with the
+# real HTML inside a `__bundler/template` JSON payload rather than in the file.
+#
+# ⚠️ Same trade as the entry above, and the same caveat: these are the SOURCE of
+# what shipped. What survives a delete is the code plus the accounting — the
+# landing page's four conditions in `landing-sections.tsx`, and the four rules
+# `/about` lost, listed in `about-sections.tsx` and `web/src/app/CLAUDE.md`.
+#
+# To read one back: `sed -n '384p' <file> | python3 -c \
+#   "import sys,json; sys.stdout.write(json.loads(sys.stdin.read()))"`
+fluud-*-standalone.html

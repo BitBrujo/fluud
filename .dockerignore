@@ -1,0 +1,116 @@
+# Keep the build context small, and keep a developer's working tree out of the
+# image.
+#
+# THE LOAD-BEARING ENTRY IS `waterline/web/`. Once anyone runs `npm run
+# prod:local`, that directory exists locally. Without this ignore, `COPY
+# waterline/` drags their build into the image and the Node stage's output
+# lands on top of it — making the image depend on the state of somebody's
+# checkout. That is exactly the property you do not want on the deploy path.
+
+.git
+.gitignore
+
+# python
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.sqlite
+
+# secrets — env reaches the container from the host's own configuration,
+# never from the image
+.env
+.env.*
+!.env.example
+
+# ⚠️ **`.env.*` above matches the CONTEXT ROOT ONLY, and that is not obvious.**
+# Docker's ignore patterns are anchored, so `.env.*` does not match
+# `web/.env.local` — which holds `NEXT_PUBLIC_NEON_AUTH_URL` and
+# `WATERLINE_API`, and which `COPY web/ ./` was carrying straight into the Node
+# stage. Found 2026-08-16 while reading the context before a deploy, not by any
+# runner.
+#
+# It was INERT rather than harmful, and the reason is worth keeping: the
+# Dockerfile sets `ENV NEXT_PUBLIC_NEON_AUTH_URL` before `npm run build`, and
+# Next does not overwrite a variable already present in `process.env` — so
+# `.env.local` could never win. **That is a property of the current Dockerfile,
+# not of this file**, and it would stop being true if the `ARG`/`ENV` pair were
+# ever dropped. At that point a laptop's value would silently become the one
+# baked into the bundle, which is the failure `railway up` makes easy: it
+# uploads the WORKING TREE, and this file is the only filter.
+web/.env
+web/.env.*
+
+# UI build inputs and outputs. The Node stage rebuilds all of these from the
+# lockfile; nothing here should ever come from a laptop.
+web/node_modules/
+web/.next/
+web/out/
+waterline/web/
+
+# The basemap generator is the one thing in web/ that needs network, and it is
+# run by hand to regenerate a committed file. `COPY web/ ./` would otherwise
+# drag it into the Node stage, where it is never invoked and must never be.
+web/scripts/
+
+# ⚠️ The vitest suite, excluded for a sharper reason than tidiness. `COPY web/ ./`
+# would carry it in, and `next build` typechecks `**/*.ts` — so a type error in a
+# TEST file would fail the PRODUCTION IMAGE BUILD and block a deploy over
+# something that cannot reach a user. `npm run typecheck` and `npm test` cover
+# these; the image build must not. The config is `.mts` and matches the same
+# rule, so it is named explicitly rather than left to the directory glob.
+web/tests/
+web/vitest.config.mts
+
+# The design-system export surface — the entry barrel, its two shims, the
+# fixtures, 56 authored previews and 416KB of woff2. Build input for
+# claude.ai/design and for nothing this image serves.
+#
+# ⚠️ Excluded for WEIGHT, not for the reason above it. It is a dot-directory,
+# and TypeScript's `include` wildcards skip those — verified by planting a
+# deliberate type error in a preview and watching `tsc --noEmit` pass. So this
+# tree cannot fail the production image build the way a test file could. The
+# same property means it is never typechecked at all; see web/CLAUDE.md.
+web/.design-sync/
+
+# ⚠️ **The design-sync tool's own working directories, and they are NOT the one
+# above.** `web/.ds-sync/` is 62MB (its `node_modules` is most of it) and
+# `web/ds-bundle/` is 7.9MB of built bundle, screenshots and vendored fonts.
+# Both are gitignored, both sit inside `web/`, and `COPY web/ ./` therefore
+# drags all 70MB into the Node stage.
+#
+# ⚠️ **`railway up` uploads the WORKING TREE, so this is 70MB over the network
+# on every deploy** — which is what makes it worth an entry rather than mere
+# image hygiene. Found 2026-08-16 by reading `git status --ignored` before a
+# deploy, exactly as the deploy notes say to. **Nothing in `./scripts/check`
+# can see this**; the check is reading the ignored list before uploading.
+web/.ds-sync/
+web/ds-bundle/
+
+# Source art for the rat stills — 51MB of FBX and 4K maps. Nothing COPYs it
+# today (the Dockerfile names web/, waterline/, schema.sql and requirements.txt
+# one at a time), so this is context hygiene rather than a fix. The four baked
+# WebPs it produces live in web/public/rat/ and ride in with the UI stage.
+assets/
+
+# Source art for the landing and sign-in photographs — seven 5504×3072 JPEGs,
+# 79MB. `COPY web/ ./` would drag every one of them into the Node stage and
+# then into the image, for files nothing serves. What ships is
+# web/public/photoz/*.webp, 2.0MB the set, and that rides in with the UI stage.
+web/photoz-src/
+
+# The design mockups `/` and `/about` were built from — single-file bundles,
+# ~1.9MB the pair, with every font and photograph inlined as base64. Nothing
+# COPYs them (the Dockerfile names web/, waterline/, schema.sql and
+# requirements.txt one at a time), so this is upload weight rather than image
+# weight — and `railway up` uploads the WORKING TREE, which is what makes it
+# worth an entry.
+fluud-*-standalone.html
+Estuary-Dashboard-*.html
+
+# working files
+frames/
+.DS_Store
+NEXTJS-PORT.md
+

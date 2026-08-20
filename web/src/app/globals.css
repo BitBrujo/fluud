@@ -1,0 +1,1118 @@
+/* ⚠️ **`@import "tailwindcss"` IS SPLIT INTO THREE HERE, AND THE THIRD ONE IS
+ * DELIBERATELY UNLAYERED.** That single import is exactly these three lines with
+ * `layer(utilities)` on the last, and putting the utilities in a layer is what
+ * broke every border-colour utility in this app.
+ *
+ * The auth stylesheet imported below ships an UNLAYERED
+ * `* { box-sizing: border-box; border-color: var(--neon-border); outline-color:
+ * var(--neon-ring) }` — see `@neondatabase/auth/dist/ui/theme.css:194`.
+ * **Unlayered CSS beats every layered rule regardless of specificity.** So a
+ * zero-specificity `*` selector from a third-party package silently outranked
+ * `ModeBadge`'s `border-[var(--wl-live)]`, `SensorRow`'s
+ * `border-l-[var(--wl-select)]` and the `--wl-stale` / `--wl-dead` panel
+ * borders. All of them were emitted; none of them applied. Measured in
+ * `.design-sync/.cache/compiled.css` before the fix: `@layer utilities` spanned
+ * bytes 9931–128007 and that rule sat at 134288.
+ *
+ * ⚠️ **Unlayered, our utilities win on specificity (0,1,0 against 0,0,0)**, and
+ * they win no matter where in the file the auth import sits — which is what
+ * makes this a fix rather than another ordering rule to remember.
+ *
+ * ⚠️ **`layer(base)` on the auth import was the obvious fix and it is not
+ * available.** That stylesheet contains `@source "./.safelist.html"`, and
+ * Tailwind refuses a nested `@source`: the build fails with
+ * `` `@source` cannot be nested ``. Do not retry it.
+ *
+ * ⚠️ **Re-collapsing these three lines back into `@import "tailwindcss"`
+ * restores the bug**, and it restores it silently — the utilities are still in
+ * the stylesheet, they just stop applying. **Nothing in `./scripts/check`
+ * reaches CSS.** The check is a browser: the LIVE badge draws a green outline,
+ * or this line has been collapsed. */
+@layer theme, base, components;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Neon Auth's UI styles.
+ *
+ * ⚠️ **ONE import method, and this is it.** The package ships two — this
+ * Tailwind entry and a compiled `@neondatabase/auth/ui/css`. Importing both
+ * duplicates every rule. This project is Tailwind v4, so it takes the Tailwind
+ * one and `ui/css` must never appear anywhere.
+ *
+ * ⚠️ **THE POSITION OF THIS LINE IS LOAD-BEARING.** The auth UI defines its
+ * own `:root` values for slots this file also owns — `--background`,
+ * `--primary`, `--border`, `--radius` and more. They land at the same
+ * specificity as the master theme below, so the later declaration wins.
+ * Imported HERE, above `@theme inline` and the `:root` block, Fluud's palette
+ * overrides the library's and the sign-in card comes out in the site's own
+ * dark theme. **Moved below them, a third-party stylesheet silently becomes
+ * the master** — and it would do it to every page, not just the auth ones,
+ * because this file is loaded once for the whole app.
+ *
+ * That is the same failure mode the "supplied master" rule already warns
+ * about, arriving through an import rather than through a hand-tuned slot. The
+ * fix if the auth card ever looks wrong is still not to hand-tune a slot
+ * below: it is to check this line has not moved.
+ *
+ * ⚠️ **IT ALSO SHIPS AN UNLAYERED `*` RULE, and that is why the Tailwind import
+ * at the top of this file is split into three.** `@neondatabase/auth/dist/ui/
+ * theme.css:194` emits `* { box-sizing: border-box; border-color:
+ * var(--neon-border); outline-color: var(--neon-ring) }` outside every cascade
+ * layer, so it outranked every border-colour utility in the app until the
+ * utilities came out of `@layer utilities`. **Read the block at the top before
+ * touching either.**
+ *
+ * ⚠️ **`layer(base)` here does NOT work.** This stylesheet contains
+ * `@source "./.safelist.html"` and Tailwind refuses a nested `@source` —
+ * `` `@source` cannot be nested ``, at build time. Do not retry it.
+ *
+ * ⚠️ **`--neon-*` are declared as `var(--x, fallback)` at `:root`, which freezes
+ * them in a scoped palette.** Three of them are re-pointed in the
+ * `:root, [data-palette]` block near the bottom of this file. See it.
+ *
+ * ⚠️ **Nothing in `./scripts/check` can reach CSS**, so this comment and the
+ * browser pass that reads it are the whole of the enforcement. */
+@import "@neondatabase/auth/ui/tailwind";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Fluud is dark-only and always has been. There is no light palette to
+   toggle to — the page is read at night, in rain, on a phone, and the numbers
+   are the only bright thing on it. `<html class="dark">` in layout.tsx is what
+   makes shadcn's own `dark:` variants resolve; the values below are the theme.
+
+   ⚠️ The shadcn slots in `:root` are the MASTER THEME, supplied whole and
+   pasted verbatim in oklch. Do not hand-tune one of them to fix a component —
+   fix the component, or change the master and re-derive everything below it
+   that is defined in terms of it (`--wl-panel`, `--wl-land`, `--wl-coast`, the
+   `--depth-*-bg` grounds). Only the DARK half of that theme is here: the light
+   values it shipped with are dropped rather than carried unused, because a
+   half-present light palette invites someone to wire up a toggle this page
+   must not have. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-serif: var(--font-serif);
+  --font-display: var(--font-display);
+  --font-heading: var(--font-display);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Fluud's own ramp. shadcn has no slot for "this is how deep the water
+     is", so these live alongside rather than inside its token set. The master
+     theme has no opinion on any of them and must not be given one. */
+  --color-wl-clear: var(--wl-clear);
+  --color-wl-watch: var(--wl-watch);
+  --color-wl-warning: var(--wl-warning);
+  --color-wl-emergency: var(--wl-emergency);
+  --color-wl-live: var(--wl-live);
+  --color-wl-replay: var(--wl-replay);
+  --color-wl-stale: var(--wl-stale);
+  --color-wl-dead: var(--wl-dead);
+  --color-wl-land: var(--wl-land);
+  --color-wl-coast: var(--wl-coast);
+  --color-wl-panel: var(--wl-panel);
+  --color-wl-rule: var(--wl-rule);
+
+  /* Poster paint. Off every scale in this file — see the block in `:root`. */
+  --color-wl-cyan: var(--wl-cyan);
+  --color-wl-violet: var(--wl-violet);
+  --color-wl-lime: var(--wl-lime);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
+}
+
+:root {
+  /* ── master theme ──────────────────────────────────────────────────────
+     The face names come from the theme as supplied. ⚠️ Neither Outfit nor
+     Fira Code is self-hosted, so today both fall through to the stacks
+     behind them — `next/font/google` fetches at build time and the Docker UI
+     stage has no egress, which is the same constraint that keeps the basemap
+     and the rat committed rather than fetched. To actually ship these faces,
+     put the woff2 in `public/fonts/` and add an `@font-face` here; do not add
+     a font CDN, which would be this page's first third-party origin.
+
+     ⚠️ **REPLACED WHOLE on 2026-08-05, not hand-tuned.** The previous master
+     was a blue-violet oklch set; this one is the near-black warm-violet
+     supplied with the landing design, pasted verbatim as hex because hex is
+     what was supplied. Everything under "derived from the master" below was
+     re-derived against it — that is the rule this file states, and this is
+     what following it looks like. Do not edit one slot here to fix one
+     component. */
+  --font-sans: Outfit, ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Fira Code", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+
+  /* The display face — titles only, and the ONLY thing on this site served by
+     a third party.
+
+     `ccsignlanguage` is comic hand-lettering, from the Adobe Fonts kit linked
+     in `layout.tsx`. Read the comment on that `<link>` before changing either:
+     it is a deliberate, owner-approved exception to this project's
+     zero-third-party-origin property, it cannot be self-hosted (Adobe's
+     licence forbids it), and the whole of what makes it acceptable is that the
+     fallback below is real.
+
+     ⚠️ **The fallback stack is not decoration.** If the kit is blocked, slow,
+     or the venue's wifi is gone, every title falls through to the system stack
+     at its heaviest weight — which is precisely what shipped before the kit
+     existed, still wearing the local SVG paint filter from
+     `components/spray.tsx`. Nothing that carries a warning, a reading or an
+     age uses this token; a dead font host costs headline styling and nothing
+     else. **Do not collapse this to a bare `"ccsignlanguage"`.**
+
+     The kit also carries `ccsignlanguagescreamers`, a louder cut, currently
+     unused. If a shout variant is ever wanted it belongs beside this as its
+     own token rather than swapped into this one — the two are different faces,
+     not two weights. */
+  --font-display:
+    "ccsignlanguage", Outfit, ui-sans-serif, -apple-system, "Segoe UI",
+    sans-serif;
+
+  --background: #0b0a0d;
+  --foreground: #ece5d6;
+  --card: #121016;
+  --card-foreground: #ece5d6;
+  --popover: #121016;
+  --popover-foreground: #ece5d6;
+  --primary: #ff2d95;
+  --primary-foreground: #0b0a0d;
+  --secondary: #1c1726;
+  --secondary-foreground: #ece5d6;
+  --muted: #1c1726;
+  --muted-foreground: #8d84a0;
+  /* ⚠️ The master's accent used to be an electric green, and every component
+     that sits near a reading was written to refuse it — a green wash behind a
+     depth is the never-safe rule arriving through a hover state. This master has no
+     green to offer: its accent is the poster cyan, which is on no scale in
+     this file and cannot be read as "clear". **The refusals in
+     `station-list.tsx` and `drill-controls.tsx` stay anyway** — they are one
+     master change away from being needed again, and neither costs anything. */
+  --accent: #29d3ee;
+  --accent-foreground: #0b0a0d;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #3a3048;
+  --input: #3a3048;
+  --ring: #ff2d95;
+
+  --chart-1: #ff2d95;
+  --chart-2: #9b5cff;
+  --chart-3: #29d3ee;
+  --chart-4: #c8ff33;
+  --chart-5: #f59e0b;
+
+  --sidebar: #0b0a0d;
+  --sidebar-foreground: #ece5d6;
+  --sidebar-primary: #ff2d95;
+  --sidebar-primary-foreground: #0b0a0d;
+  --sidebar-accent: #29d3ee;
+  --sidebar-accent-foreground: #0b0a0d;
+  --sidebar-border: #3a3048;
+  --sidebar-ring: #ff2d95;
+
+  --radius: 0.5rem;
+  --spacing: 0.25rem;
+  --tracking-normal: 0em;
+
+  --shadow-x: 0px;
+  --shadow-y: 4px;
+  --shadow-blur: 8px;
+  --shadow-spread: -2px;
+  --shadow-opacity: 0.1;
+  --shadow-color: #1a1a1a;
+  --shadow-2xs: 0px 4px 8px -2px hsl(0 0% 10.1961% / 0.05);
+  --shadow-xs: 0px 4px 8px -2px hsl(0 0% 10.1961% / 0.05);
+  --shadow-sm:
+    0px 4px 8px -2px hsl(0 0% 10.1961% / 0.1),
+    0px 1px 2px -3px hsl(0 0% 10.1961% / 0.1);
+  --shadow:
+    0px 4px 8px -2px hsl(0 0% 10.1961% / 0.1),
+    0px 1px 2px -3px hsl(0 0% 10.1961% / 0.1);
+  --shadow-md:
+    0px 4px 8px -2px hsl(0 0% 10.1961% / 0.1),
+    0px 2px 4px -3px hsl(0 0% 10.1961% / 0.1);
+  --shadow-lg:
+    0px 4px 8px -2px hsl(0 0% 10.1961% / 0.1),
+    0px 4px 6px -3px hsl(0 0% 10.1961% / 0.1);
+  --shadow-xl:
+    0px 4px 8px -2px hsl(0 0% 10.1961% / 0.1),
+    0px 8px 10px -3px hsl(0 0% 10.1961% / 0.1);
+  --shadow-2xl: 0px 4px 8px -2px hsl(0 0% 10.1961% / 0.25);
+
+  /* ── derived from the master ───────────────────────────────────────────
+     Everything in this block is defined by its RELATIONSHIP to a master slot,
+     not by a colour someone liked. Re-derive all of it if the master changes;
+     a hard-coded hex from a previous palette is how a backdrop ends up
+     brighter than the cards on top of it. */
+
+  /* One step below --card. Panel headers and the masthead sit on it, so a
+     framed region reads as a single object with a chrome bar rather than as a
+     border someone drew around some content. Under this master that step is
+     exactly `--muted`, so it points at it instead of duplicating the value.
+
+     ⚠️ **Declared in the `:root, [data-palette]` block below, not here.** It is
+     derived through `var()`, and a `var()` in a custom property resolves on the
+     element that declares it — at `:root` alone it would freeze to this
+     palette's `--muted` and never follow a scoped one. See that block. */
+
+  /* The quieter of the two rules. `--border` frames an object (a panel, a
+     card, an input); this separates two bands of the SAME object — the
+     masthead from the hero, one landing section from the next — where a full
+     `--border` reads as a seam between two things rather than a change of
+     subject. Both come from the supplied master and the design uses them at
+     exactly that distinction; keeping it as its own token is what stops the
+     two collapsing into one value the next time somebody tidies. */
+  --wl-rule: #2a2333;
+
+  /* ❌ ⚠️ **`--wl-notices` was here and is DELETED, 2026-08-14.** It held the
+     height the NOTICES strip took out of the workspace, gap included — 0 by
+     default, set on `<main>` only while the strip was rendering, and
+     subtracted by both the desktop grid and the mobile map. It existed because
+     the strip was the first child of `<main>`, above the workspace, so without
+     the subtraction it pushed the bottom of the rail past the fold.
+
+     **The strip moved to the FOOT of the right-hand rail, under `watch by
+     email`**, on the owner's instruction. The rail scrolls, so there is
+     nothing left to subtract from and both `calc()`s are one term shorter.
+     Its height is a literal now — `h-[112px] md:h-[192px]`, the same two
+     constants with the folded-in `gap-4` taken back out.
+
+     ⚠️ **The rule the token enforced SURVIVES the token and is the part to
+     keep: the strip's height is a CONSTANT and it must stay one.** It scrolls
+     internally and does not grow with the number of messages. A `min-h` or an
+     `h-auto` re-creates the unbounded push, and in the rail that push moves
+     the whole column. See `components/message-strip.tsx`, which carries the
+     arithmetic and what the move cost.
+
+     ⚠️ **Nothing in `./scripts/check` reaches CSS**, so this comment is the
+     enforcement, on the same terms as `.wl-swell`'s below. */
+
+  /* "You picked this." The master's magenta, aliased rather than copied, on the
+     same terms as `--wl-panel` above — if the master changes, selection follows
+     it.
+
+     ⚠️ This is the one chromatic slot from the master that reaches the page,
+     and it is allowed to precisely because magenta is on NO scale in this file:
+     not the severity ramp, not the provenance violet, not the staleness amber,
+     not the bone-white spray. It cannot be read as a claim about water, which
+     is what disqualifies the master's other accent — `--accent` is an electric
+     green and a green wash behind a depth reading is the never-safe rule arriving
+     through a hover state (see `station-list.tsx`, `drill-controls.tsx`).
+
+     Selection is a fact about the READER, not about the street. That is the
+     whole justification, and it is also why this replaced the severity-tinted
+     halo the map pins used to draw: a selected `clear` pin haloed in its own
+     green was the ramp amplifying itself under the cursor, which is the last
+     colour that should get louder when someone presses it. The halo now says
+     "this is the one you are looking at" and nothing else.
+
+     ⚠️ Not for anything that is itself a reading, a level or a provenance
+     claim. Those have their own scales below and none of them is this.
+
+     ⚠️ **Declared in the `:root, [data-palette]` block below**, on `--wl-panel`'s
+     reasoning — it is derived through `var()` and has to re-resolve in a scope. */
+
+  /* The resting colour of a plotted trace. Same magenta, named separately
+     because it is a different job and the two are free to diverge: `--wl-select`
+     is a *state* (this is the one you pressed) and this is a *material* (this
+     mark is a line on a chart).
+
+     ⚠️ They are the same value today, which means pink on this page no longer
+     means only "selected". That is a real cost and it is the owner's call: a
+     gauge trace is inside a card, constant, and never on a ramp, while selection
+     is an edge, a ring and a wash that come and go — so the two read as
+     different things in practice even sharing a hue. If that stops being true,
+     this is the token to move, not `--wl-select`.
+
+     Safe here for the same reason as `--wl-select`: magenta is on no scale in
+     this file, so a trace drawn in it cannot be read as a severity. The colour
+     says "this is the shape of the water", and how high the water is stays with
+     the number, the threshold line and the printed endpoints.
+
+     ⚠️ **Declared in the `:root, [data-palette]` block below**, with the other
+     `var()`-derived tokens. */
+
+  /* The basemap. Land sits barely above the page and the coastline is barely
+     above the land, because the map is a backdrop for pins and not a subject.
+     There is no water colour: water is the page background, which is why the
+     harbour reads as continuous with everything around it.
+
+     The two offsets have survived two masters now — land at +0.070 L over the
+     background, coast at +0.178 — because the RELATIONSHIP is the thing, not
+     the colour. Re-anchored again on 2026-08-05: this master's background is
+     `#0b0a0d` (≈ L 0.145, hue ~310), so land lands at 0.215 and coast at
+     0.323, both carrying the master's warm-violet hue rather than the old
+     263. Keeping the old values would have drawn a blue city on a
+     near-black page — the exact "hard-coded hex from a previous palette"
+     failure the paragraph above warns about. */
+  --wl-land: oklch(0.215 0.018 305);
+  --wl-coast: oklch(0.323 0.032 305);
+
+  /* ── off every scale in this file, and not the master's to set ─────────
+     The master theme has no severity, provenance or staleness slot, so none of
+     the rest of this block is derived from it. These are safety colours; they
+     are verbatim and they stay verbatim. */
+
+  /* The alert ramp, verbatim from the page this replaces. */
+  --wl-clear: #3f8f6f;
+  --wl-watch: #d1a444;
+  --wl-warning: #d97706;
+  --wl-emergency: #dc2626;
+
+  /* Provenance. Violet is "this is not happening right now" — the REPLAY mode
+     badge and the REPLAYED/DRILL chips deliberately share it. ⚠️ Not the
+     master's `--primary` magenta, near as it sits: primary is chrome and this
+     is a claim about whether a warning is real. */
+  --wl-live: #22c55e;
+  --wl-replay: #a78bfa;
+
+  /* Staleness. Not on the severity ramp on purpose: a stale card is not a
+     worse reading, it is an absence of one, and it must not read as either
+     "calm" or "flooding". */
+  --wl-stale: #f59e0b;
+  --wl-dead: #dc2626;
+
+  /* Combined sewer outfalls. Deliberately off every other scale in this file:
+     not on the severity ramp, not the staleness amber, not the provenance
+     violet. An outfall is a fixed piece of infrastructure, not a reading and
+     not an event, and it must not be mistakable for either at a glance. Sits
+     just above the coastline so 427 of them read as texture on the shore
+     rather than as a second set of instruments. Its hue is well off the
+     master's 263 for the same reason it is off the ramp. */
+  --wl-cso: #4d7d94;
+
+  /* Harbor and stream gauges. Neutral slate, and that is the whole point: a
+     gauge is a regional instrument on its own datum, so it may never be drawn
+     on the severity ramp — a green diamond beside a green pin would say the
+     harbor is "clear", which is not a claim any of these gauges can make
+     (the never-safe rule). Colour appears only when a gauge crosses its OWN published
+     threshold, or stops reporting, and then it borrows --wl-warning /
+     --wl-stale / --wl-dead rather than owning a scale of its own. */
+  --wl-gauge: #93a4b8;
+
+  /* FloodNet sensors on the map. An explicit ALIAS of --wl-gauge rather than a
+     copy of its hex, and the aliasing is the statement: a sensor marker and a
+     gauge marker are the same *kind* of thing here — an instrument deliberately
+     off the severity ramp — so they must not be able to drift apart into two
+     neutral slates that look like a distinction nobody meant.
+
+     What separates the two classes is SHAPE, not hue: a diamond for a gauge, a
+     hollow ring for a sensor, a filled dot for an outfall. That is the same
+     reasoning the gauge diamond already follows, and it is why this may be an
+     alias at all — if the colour ever carried the distinction, sharing it would
+     be a bug.
+
+     Like the gauge, colour appears only when a sensor crosses a borrowed
+     threshold (FloodNet's own 10mm flood event) or its reading stops being
+     trustworthy, and then it borrows --wl-watch / --wl-stale / --wl-dead rather
+     than owning a scale. Nothing here is ever green. */
+  --wl-sensor: var(--wl-gauge);
+
+  /* The link from a camera to the sensor whose depth labels its view.
+
+     ⚠️ **EVERY LINK IS THE SAME LINE.** Colour, weight, dash and opacity are
+     constant across every depth either instrument can report, across staleness,
+     across `plausible`, across `calibrated` and across `alert_permitted` — so a
+     connector cannot encode any of them. **A pairing gates nothing**: watch.py
+     has no camera in it and the on-page alert system was unwired, and the
+     clause saying what a pairing IS has been wrong twice already (see
+     `sensorTitle`). A line that went amber when its sensor went stale, or red
+     when it died, or took a depth band, would be inventing a claim the pairing
+     does not make.
+
+     ⚠️ **`--wl-select` is not available to it either.** Lighting the selected
+     camera's link would put a selection state on a mark the reader cannot
+     select, and both ends already wear the halo.
+
+     Its own token rather than a borrow, because every candidate already means
+     something else on this drawing: the instrument slates say "this is an
+     instrument", --wl-cso says "this is plumbing", --wl-coast says "this is the
+     shore" — which is the misread the dash exists to prevent, arriving through
+     hue — and --muted-foreground is the camera band's `none`. A neutral
+     blue-grey in the instruments' family so the connector reads as belonging to
+     the marks it links, two steps darker than --wl-gauge so a ring never
+     disappears into its own line, and lower in chroma than --wl-cso's teal so
+     the two do not collide when both layers are on.
+
+     ⚠️ Declared HERE and not in the `:root, [data-palette]` block: it is a
+     literal depending on no palette slot, so it cannot freeze — and `:root` is
+     what makes it UN-RETINTABLE, on the same terms as --wl-cso, --wl-gauge and
+     the depth bands. The byte-identical three-palette audit then covers it. */
+  --wl-pair: #7b8190;
+
+  /* The sprayed-title paint. Bone white, and off every scale in this file on
+     purpose: it is the loudest thing here and it means nothing about conditions,
+     which is exactly the pairing the never-safe rule needs.
+
+     ⚠️ **Its original call site is gone.** It was the ground on the back of a
+     camera card, behind a DOHMH rat-inspection rate — the one number on the page
+     that was not about water, which is why it needed a colour that could not
+     borrow the severity ramp, the staleness amber or the provenance violet. That
+     card was deleted on 2026-08-14. `spray.tsx` is the caller now, and the rule
+     survives the move unchanged: **nothing that varies with a reading may take
+     this token, and this token may never be put on a scale.** */
+  --wl-spray: #ece5d6;
+
+  /* ── poster paint ──────────────────────────────────────────────────────
+     Three chroma slots from the landing design, and the ONLY reason they are
+     allowed to exist is the rule two blocks up: a colour beside a reading may
+     not VARY with that reading. None of these ever does. They are constants
+     on no scale — not the severity ramp, not staleness amber, not provenance
+     violet, not the bone spray — so a mark painted in one cannot encode a
+     depth, a level or a claim about whether something is happening now.
+
+     Same licence `--wl-select` and `--wl-graph` already run on, and the same
+     limits: never on a severity pill, a map pin, a gauge diamond or a depth
+     that is being CLASSIFIED by its colour. Chrome, rules, buttons, offsets
+     and headline paint only. */
+
+  /* Buttons, offset shadows, and the landing's sub-headline. Aliased to the
+     master's accent rather than copied — if the master moves, this follows,
+     which is the same reasoning as `--wl-panel` and `--wl-select`.
+
+     ⚠️ **Declared in the `:root, [data-palette]` block below**, and for the same
+     reason those two are. */
+
+  /* ⚠️ **Never as a MARK on the instrument, and that boundary is
+     load-bearing.** In the workspace violet already means one specific thing —
+     `--wl-replay`, "this warning is not happening right now" — and the two
+     hexes are four percent apart. A violet chip, border, active state or
+     marker anywhere on `/map` would put a provenance colour on furniture,
+     which is the fastest way to make the REPLAYED and DRILL chips stop meaning
+     anything. Use `--wl-select` for a chosen thing and `--wl-cyan` for chrome.
+
+     What it MAY do is be paint. `PaintRule` spends it on both pages, in a 5px
+     full-width band alongside three other colours, and that is safe for the
+     reason the four-at-once matters: a stripe cycling magenta · violet · cyan ·
+     lime reads as paint, not as a claim, because no single one of them is
+     being used to say anything. A lone violet element on the instrument reads
+     as a state. The landing page is looser — it states no provenance at all,
+     so it has no signal for violet to collide with — but the workspace rule
+     above is absolute for anything that is not this stripe. */
+  --wl-violet: #9b5cff;
+
+  /* The lime flash on a badge chip. Loudest thing in the palette and
+     deliberately attached to the least consequential content — a strapline, a
+     pair distance — so that loudness is never available to a reading. */
+  --wl-lime: #c8ff33;
+
+  /* ── the document wash ─────────────────────────────────────────────────
+     The blue lift on the flat bands of `/` and `/about`. Added 2026-08-16, on
+     the owner's instruction: those two pages alternate flat bands with
+     full-bleed photographs, and a flat band beside a photograph reads as a hole
+     rather than as a surface.
+
+     ⚠️ **It is TRANSLUCENT, and that is what makes ONE token enough.** It
+     composites over whatever ground it is laid on — `--background` on a bare
+     band, `--card` under `bg-card` — so it needs to know nothing about either
+     and it follows every palette for free. **Which is also why it is declared
+     here and not in the `:root, [data-palette]` block below**: it holds no
+     `var()` of a palette slot, so it cannot freeze, and that block's own rule is
+     that only tokens which depend on one belong in it.
+
+     ⚠️ **`rgb(… / a)` and specifically NOT `color-mix`.** Written as a mix into
+     `var(--background)` this shipped a Tailwind-generated `@supports` fallback
+     that dropped the percentage and left `#3d7fd0` at FULL STRENGTH across 58%
+     of every band — a page of electric blue slabs on any browser without
+     `color-mix`. Measured in the built stylesheet, 2026-08-16. **Do not
+     reintroduce a `color-mix` in a custom property Tailwind can see.**
+
+     ⚠️ **Deliberately not derived from `--primary`.** Selection means *the reader
+     picked this*; a page wash is a fact about a page. Aliasing them would turn
+     every band on those two pages magenta under the base palette and pink under
+     sodium, and would make one decision wear two names.
+
+     ⚠️ **160deg, and it is not a taste choice.** At 180 the stops read as a
+     horizontal edge across a full-bleed band, and this site does not draw a level
+     it does not mean — `.wl-swell`'s deletion comment carries the argument. Off
+     axis and three-stop, it reads as light falling across a surface. **Keep it
+     off 180 and keep the stops soft.**
+
+     ⚠️ **It is DECORATION and takes no input.** A constant. It may never be
+     driven by a depth, a level, `mode`, the gauges or the time of day, and it
+     ends fully transparent so a washed band and a flat one meet at the same hex.
+     ⚠️ **`/`'s two illustrated cards sit on top of one**, which is the reason to
+     hold that line here: a ground that moved with a number would make those
+     figures look measured. */
+  --wl-wash: linear-gradient(
+    160deg,
+    rgb(61 127 208 / 0.07) 0%,
+    rgb(61 127 208 / 0.025) 58%,
+    rgb(61 127 208 / 0) 100%
+  );
+
+  /* ⚠️ **The SECOND wash, and it is VERTICAL — the one exception to the rule
+     directly above.** `LandingNotify` alone takes it, on the owner's
+     instruction, 2026-08-16: a blue gradient down the *Set your alerts* band,
+     light at the top and dark at the foot. It is the same hue, the same
+     translucency and the same refusals as `--wl-wash`; what differs is the axis
+     and that it is roughly twice as strong, because this band is asked to read
+     as a gradient rather than as a lift.
+
+     ⚠️ **TWO STOPS, and that is what makes 180deg safe here.** The argument
+     against vertical above is that the stops read as a horizontal edge across a
+     full-bleed band, and this site does not draw a level it does not mean. A
+     ramp with a MID stop has an inflection, and an inflection across a
+     full-width band is a line somebody can find. A two-stop ramp has nowhere
+     for one to sit — the alpha falls continuously from the first pixel to the
+     last. **Do not add a third stop to make it "smoother". A third stop is the
+     failure this token is shaped around.**
+
+     ⚠️ **Everything else that binds `--wl-wash` binds this.** It is DECORATION
+     and takes no input — not a depth, not a level, not `mode`, not the gauges,
+     not the time of day. It is `rgb(… / a)` and never `color-mix`, for the
+     `@supports`-fallback bug read out of the built stylesheet the same day. It
+     is not derived from `--primary`. It ends fully transparent, so the foot of
+     the band and an unwashed band meet at the same hex.
+
+     ⚠️ **Its ground is `bg-card` and it is not a substitute for one.** The band
+     keeps that class; drop it and the gradient composites over page background,
+     and the seam lands inside the video frame's corner radii.
+
+     ⚠️ **The top hex is UNMEASURED.** Over estuary's `--card` `#0d131b` the
+     arithmetic puts the first row near `#16263c`, which is a calculation and
+     not a reading. `/` is outside the session gate and cheap to check. */
+  --wl-wash-vertical: linear-gradient(
+    180deg,
+    rgb(61 127 208 / 0.18) 0%,
+    rgb(61 127 208 / 0) 100%
+  );
+
+  /* Depth-band pill grounds. Ink comes from `--wl-warning` / `--wl-emergency`
+     directly — see `lib/depth-band.ts`.
+
+     ⚠️ **These are two of the eight `--sev-*` values, renamed and unchanged.**
+     There were four pairs, one per ordinal class a camera used to guess at.
+     That layer is deleted; a depth falls in one of three bands and the lowest
+     of them takes no ground at all, so `--sev-ponding-bg` and
+     `--sev-impassable-bg` survive under new names and the other six are gone.
+     The four `--sev-*-fg` values were byte-identical duplicates of the ramp
+     tokens above and were deleted outright rather than renamed.
+
+     ⚠️ **There is no ground for the `none` band and there must not be one.**
+     `--sev-dry-bg` was a dark green, and a green chip under 10 mm is this app
+     reporting that a block is fine. The low end of this scale is a neutral
+     outline; the scale has a warning end and no reassuring end.
+
+     The contrast arithmetic is unchanged from the eight-value version and is
+     kept because it is what decides whether these may be nudged. This master's
+     `--card` is `#121016`, L **0.178**, below both grounds (0.253 and 0.226),
+     so the pills read as raised chips at full ink contrast — 5.00:1 and
+     3.59:1. `#dc2626` cannot reach 4.5:1 against *black* at all (ceiling
+     4.35:1), which is why the pill is never the only thing carrying a depth.
+     If a future master raises `--card` past L 0.22, the lever is the
+     component — an outlined pill in `depth-band-pill.tsx` — not these two
+     values. */
+  --depth-flood-bg: #2e1f0d;
+  --depth-curb-bg: #2e1214;
+
+  /* ── the measured constants, named ─────────────────────────────────────
+     Imported from the Fluud design system, 2026-08-15. Every value here was
+     already a literal somewhere in `src/`; naming it does not make it a new
+     decision, and it does not make it a derived one either.
+
+     ⚠️ **These are MEASURED in a browser, not derived from a grid.** The design
+     drew 296 / 1fr / 340 and this app's real chrome does not fit at those
+     widths — `PanelHeader` puts a title beside a pager and two chips, so the
+     rail truncated to "SELECTED INS…" and a 296px row wrapped "27s ago" onto
+     two lines. Both tracks gained the least that cleared it. **Do not snap them
+     to 4 or 8**, and re-measure rather than reason if one has to move.
+
+     ⚠️ **Naming a constant does not make it authoritative.** The components
+     still carry these as Tailwind literals, because a class string is what
+     Tailwind scans and a `var()` in an arbitrary value is not always the same
+     thing. These are the record and the reference; where the two disagree, the
+     browser measurement wins and both get fixed. */
+
+  /* Type sizes, by job rather than by pixel. `--text-body-size` rather than
+     `--text-body` because that name is a colour alias below. */
+  --text-depth: 26px; /* the one big number on a card */
+  --text-title: 15px; /* an instrument's name */
+  --text-body-size: 13px;
+  --text-small: 12px;
+  --text-micro: 11px; /* ages, legend keys */
+  --text-label: 10px; /* mono micro-caps: panel titles */
+  --text-label-xs: 9px; /* dt labels in a detail list */
+
+  --tracking-label: 0.14em; /* panel titles */
+  --tracking-chip: 0.08em; /* pills, buttons */
+  --tracking-depth: -0.02em;
+  --leading-tight: 1.2;
+  --leading-body: 1.55;
+
+  --weight-body: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-display: 900;
+
+  /* The three tracks and the two heights that may not be traded. */
+  --track-list: 312px;
+  --track-rail: 372px;
+  --panel-header-h: 44px; /* pinned, so the map and the list start on one line */
+  /* ⚠️ NOT the old 256px, and not a floor any more. Two-up and its pager were
+     replaced by a five-card grid with an NWS block above it on 2026-08-15, so
+     "the two-up height at which neither face scrolls" describes a layout that
+     no longer exists. Above `xl` the slot is `flex-1` and takes the whole
+     track; this is the stacked-rail height below it. MEASURED — see
+     `MEASUREMENTS.md` — and re-measured rather than reasoned about. */
+  --gauges-h: 704px;
+  --notices-h: 192px; /* ⚠️ a CONSTANT — a min-h re-creates an unbounded push */
+  --nws-h: 112px; /* ⚠️ a CONSTANT — a min-h re-creates an unbounded push */
+  --row-h: 42px; /* a station row */
+  --workspace-h: calc(100dvh - 5rem);
+  --page-max: 1600px;
+  --doc-max: 1320px;
+  --prose-measure: 66ch;
+
+  /* Radii and the two shadows that exist. `--radius-sm` / `-md` / `-lg` are
+     already derived from `--radius` in `@theme inline` above and are not
+     restated here. Elevation is nearly absent by design: a dark instrument
+     separates surfaces with a border and a one-step ground change. */
+  --radius-pill: 999px;
+  --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.4); /* a segmented control's face */
+  --shadow-popover: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --shadow-offset: 3px 3px 0 var(--wl-cyan); /* the offset print block */
+
+  --border-frame: 1px;
+  --border-select: 3px; /* the selected row's left edge */
+  --coast-stroke: 1.5px; /* ⚠️ non-scaling — see `city-map.tsx` */
+
+  /* Motion. ⚠️ The REST STATE of anything animated is a decision: a
+     reduced-motion reader sees one frame forever, which is why `.wl-urgent`
+     rests loud. */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --ease-standard: ease;
+  --urgent-period: 1.4s;
+
+  /* ── semantic aliases ──────────────────────────────────────────────────
+     For consumers who should not reach for a raw slot. They add no value and
+     no decision; what they add is a name that says which JOB a surface is
+     doing, so a later edit cannot quietly move a chrome bar onto the card
+     ground by reaching for `--muted` because it happened to match.
+
+     ⚠️ **All nine are declared in the `:root, [data-palette]` block below.**
+     Every one is a `var()` of a slot a palette may move, so every one has to
+     re-resolve inside a palette scope. */
+}
+
+/* ── two more palettes, available and unwired ────────────────────────────
+   Imported from the Fluud design system, 2026-08-15, on the owner's
+   instruction. Set `data-palette` on `<html>` to preview one; there is no
+   toggle in the UI and there must not be one on the page itself.
+
+   ⚠️ **THIS IS NOT THE LIGHT HALF COMING BACK.** The master theme's light
+   values were dropped rather than carried unused, because a half-present light
+   palette invites someone to wire up a toggle this page must not have. Both
+   palettes below are COMPLETE and both are DARK. The rule they were dropped
+   under is about a page that can be read at night in rain on a phone, and
+   neither of these can be switched into a white one.
+
+   ⚠️ **What a palette may move: the neutrals, the poster paint, the basemap.
+   What it may NEVER move: the safety colours.** The depth bands, the staleness
+   amber and red, the provenance green and violet, and the instrument slates are
+   declared once in `:root` above and no block below overrides one. That split
+   IS the system — a palette that could retint the depth bands would be a theme
+   with an opinion about how deep the water is.
+
+   ⚠️ **Specificity is equal and SOURCE ORDER is what makes these work.**
+   `:root` and `[data-palette="…"]` are both (0,1,0). These blocks win because
+   they come after. Moving them above the master silently disables them, which
+   is the same failure mode as the auth stylesheet's import position at the top
+   of this file, arriving through a different door.
+
+   ⚠️ **`--depth-flood-bg` and `--depth-curb-bg` ARE re-derived per palette and
+   that is not a contradiction of the paragraph above.** They are grounds, not
+   ink — the ink comes from `--wl-warning` / `--wl-emergency` and does not move.
+   A ground is a relationship to `--card`, and `--card` is a palette's to set.
+   The contrast arithmetic in the `:root` block has to be re-run against any new
+   `--card`; if one lands past L 0.22 the lever is `depth-band-pill.tsx`, not
+   these two values. */
+
+/* Estuary — cool blue-slate, blue leads. ⚠️ **SHIPPED as of 2026-08-15**, on the
+   owner's instruction: `layout.tsx` carries `data-palette="estuary"` on `<html>`.
+   Bitumen (the `:root` block above) and sodium below are the available two now.
+
+   ⚠️ **Retuned in the same commit, from `Estuary-Dashboard-2A`.** Magenta left
+   this palette: `--primary` / `--ring` moved to a mid blue, and `--wl-violet`
+   moved to a deep blue that still separates from `--wl-cyan` in `PaintRule`. The
+   three blues are separated by LIGHTNESS on purpose — deep `#1e62d0` (paint),
+   mid `#4d8dff` (selection), bright `#35d6f2` (chrome) — and that separation is
+   the thing to check in a browser, because `--wl-select` and `--wl-cyan` land in
+   the same list row as the selection edge and the over-threshold chip.
+
+   ⚠️ **The safety audit is unchanged and that is the point.** Not one depth
+   band, staleness, provenance or instrument-slate token is touched here or by
+   the derived block below. `--wl-clear`, `--wl-watch`, `--wl-warning`,
+   `--wl-emergency`, `--wl-stale`, `--wl-dead`, `--wl-live`, `--wl-replay`,
+   `--wl-gauge`, `--wl-sensor` and `--wl-cso` stay declared once in `:root`,
+   byte-identical across all three palettes. */
+[data-palette="estuary"] {
+  --background: #06090e;
+  --foreground: #e4ecf3;
+  --card: #0d131b;
+  --card-foreground: #e4ecf3;
+  --popover: #0d131b;
+  --popover-foreground: #e4ecf3;
+  --muted: #151d28;
+  --muted-foreground: #7e91a6;
+  --secondary: #151d28;
+  --secondary-foreground: #e4ecf3;
+  --border: #2b3a4a;
+  --input: #2b3a4a;
+
+  /* ⚠️ Blue rather than the master's magenta, and it carries `--wl-select` and
+     `--wl-graph` with it through the derived block below — which is the whole
+     mechanism working. Selection and the trace follow the palette; neither is
+     re-declared here, because neither is a colour this palette gets to pick
+     independently of `--primary`. */
+  --primary: #4d8dff;
+  --primary-foreground: #06090e;
+  --accent: #35d6f2;
+  --accent-foreground: #06090e;
+  --ring: #4d8dff;
+
+  --wl-rule: #152030;
+  /* ⚠️ Deep blue, not the base palette's purple. `#8a6cff` read as purple
+     against these blue-slate neutrals, which put a colour four percent from
+     `--wl-replay` on `PaintRule`. This still reads as a distinct quarter of that
+     band against `--wl-cyan` `#35d6f2`. */
+  --wl-violet: #1e62d0;
+  --wl-lime: #b9f34a;
+  --wl-spray: #e4ecf3;
+
+  /* The offsets are the thing, not the colours: land +0.070 L over the page,
+     coast +0.178, both carrying this palette's own hue. */
+  --wl-land: oklch(0.215 0.016 245);
+  --wl-coast: oklch(0.323 0.03 245);
+
+  --depth-flood-bg: #2c1f0c;
+  --depth-curb-bg: #2d1215;
+}
+
+/* Sodium — warm streetlight dark, teal leads. */
+[data-palette="sodium"] {
+  --background: #0c0906;
+  --foreground: #f2e7d3;
+  --card: #14100b;
+  --card-foreground: #f2e7d3;
+  --popover: #14100b;
+  --popover-foreground: #f2e7d3;
+  --muted: #1e1810;
+  --muted-foreground: #9a8b72;
+  --secondary: #1e1810;
+  --secondary-foreground: #f2e7d3;
+  --border: #3d3122;
+  --input: #3d3122;
+
+  --primary: #ff3d7a;
+  --primary-foreground: #0c0906;
+  /* ⚠️ Teal rather than green-teal on purpose. Anything that could be read as
+     green is unavailable near a reading, and this token reaches the page as
+     `--wl-cyan` on the `Start Monitor` button, which sits beside a depth. */
+  --accent: #2fc6d2;
+  --accent-foreground: #0c0906;
+  --ring: #ff3d7a;
+
+  --wl-rule: #2a2116;
+  --wl-violet: #a06bff;
+  --wl-lime: #e0f24a;
+  --wl-spray: #f2e7d3;
+
+  --wl-land: oklch(0.215 0.02 70);
+  --wl-coast: oklch(0.323 0.032 70);
+
+  --depth-flood-bg: #33230d;
+  --depth-curb-bg: #33150f;
+}
+
+/* ── derived through var(), and therefore SCOPE-SENSITIVE ────────────────
+   Every token below is defined as a `var()` of a slot one of the palettes above
+   may move. That is deliberate — the relationship is the thing, not the hex —
+   but it has one property that is easy to get wrong and invisible when you do.
+
+   ⚠️ **A `var()` inside a custom-property declaration substitutes at
+   COMPUTED-VALUE TIME on the element that declares it, and the RESULT
+   inherits.** So `--wl-panel: var(--muted)` written at `:root` computes to the
+   base palette's `--muted` on `<html>` and inherits that hex downward. A
+   `[data-palette]` on a DESCENDANT moves `--muted` for that subtree and
+   `--wl-panel` never follows it: every `PanelHeader` in the scope paints the
+   base palette's chrome.
+
+   ⚠️ **This is invisible in this app and total in the design system.** Here the
+   attribute sits on `<html>`, which IS `:root`, so the two rules match the same
+   element and it resolves correctly by accident. In `web/.design-sync/` a design
+   agent wraps a `<section data-palette="estuary">` — a descendant — and thirteen
+   tokens freeze at once. Found that way, in `Estuary-Dashboard-2A`, 2026-08-15.
+
+   ⚠️ **SOURCE ORDER: this block must stay BELOW every palette block.** `:root`,
+   `[data-palette]` and `[data-palette="estuary"]` are all (0,1,0), so nothing
+   but position decides. Above them it would resolve against the base slots and
+   the fix would silently do nothing — the same trap the palettes themselves
+   carry, one selector further along.
+
+   ⚠️ **Only tokens that DEPEND on a palette slot belong here.** `--wl-sensor:
+   var(--wl-gauge)` stays in `:root`: no palette overrides `--wl-gauge`, so it
+   cannot freeze, and moving it would widen this block for nothing.
+
+   ⚠️ **Nothing in `./scripts/check` reaches CSS.** The check is a browser:
+   `getComputedStyle(el).getPropertyValue('--wl-panel')` on a scoped div must
+   return that palette's `--muted`, not this file's. */
+:root,
+[data-palette] {
+  --wl-panel: var(--muted);
+  --wl-select: var(--primary);
+  --wl-graph: var(--primary);
+  --wl-cyan: var(--accent);
+
+  --surface-page: var(--background);
+  --surface-card: var(--card);
+  --surface-chrome: var(--wl-panel);
+  --text-body: var(--foreground);
+  --text-quiet: var(--muted-foreground);
+  --edge-frame: var(--border);
+  --edge-band: var(--wl-rule);
+  --mark-selected: var(--wl-select);
+  --mark-trace: var(--wl-graph);
+
+  /* ⚠️ **Somebody else's tokens, re-pointed for the same reason.** The auth
+     stylesheet imported at the top declares a `--neon-*` mirror of every shadcn
+     slot as `var(--x, fallback)` at `:root` — the identical freeze, in a package
+     this repo does not control. Three of them are consumed by rules that reach
+     every element on the page: `*`'s `border-color` and `outline-color`, and
+     `body`'s `color`. Left frozen, a scoped palette gets the base palette's
+     default border on anything that does not carry a border utility.
+
+     ⚠️ **Only these three, and only because those three rules exist.** This is
+     not a general mirror of Neon's token set — do not grow it into one. */
+  --neon-border: var(--border);
+  --neon-ring: var(--ring);
+  --neon-foreground: var(--foreground);
+}
+
+/* ── the self-hostable type stack ────────────────────────────────────────
+   `data-type="proposed"` on `<html>`. Every face in it can be served from
+   `public/fonts/`, which is what makes it interesting: it would remove the
+   Adobe Fonts kit, and with it the last third-party origin that costs a reader
+   anything on a page they open outdoors.
+
+   ⚠️ **IT IS NOT THAT YET, and switching it on does not make it so.** None of
+   these three is self-hosted here either, so today this attribute swaps one
+   unfetched stack for another and every face falls through to the system
+   fallback behind it. **Making it real means putting the woff2 files in
+   `public/fonts/` and adding `@font-face` rules to this file.** Adding a font
+   CDN instead would be this page's first third-party origin for text, which is
+   the thing the whole exercise is trying to remove.
+
+   ⚠️ **The display slot keeps a real fallback in both stacks.** `Archivo Black`
+   degrades to `Archivo` and then to the system stack at its heaviest weight,
+   still wearing `spray.tsx`'s local SVG paint filter. **Do not collapse this to
+   a bare `"Archivo Black"`** — that is the same rule `--font-display` already
+   carries in `:root`.
+
+   ⚠️ **Nothing that carries a reading or an age is set in `--font-display`, in
+   either stack.** A dead font host costs headline styling and nothing else. */
+[data-type="proposed"] {
+  --font-sans: Archivo, ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: "Archivo Black", Archivo, ui-sans-serif, -apple-system,
+    "Segoe UI", sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer components {
+  /* Was `.num` on the buildless page. Digits must not jitter between polls —
+     a depth that reflows every 15 seconds reads as instability in the reading
+     rather than in the typography. */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* EMERGENCY draws the eye. It pulses opacity and nothing else — the colour
+     is the information and the movement is only how it gets noticed, so
+     turning the movement off costs nobody the warning. */
+  .wl-urgent {
+    animation: wl-urgent-pulse var(--urgent-period) ease-in-out infinite;
+  }
+
+  /* A large soft halo on `/`'s two inventory glyphs.
+
+     ⚠️ **STATIC, and that is the decision.** It breathed on a 4s loop for one
+     revision and the movement came off on the owner's instruction. **Do not put
+     it back on a timer**: a halo that pulses beside a count reads as a
+     heartbeat — as liveness — on a page that polls nothing, and the period was
+     the only thing holding that apart. A constant glow is light falling on a
+     drawing and can be read as nothing else. It is also why this rule needs no
+     `prefers-reduced-motion` branch: there is no motion to reduce.
+
+     ⚠️ **`currentColor`, so it is whatever the element is already painted in**
+     — on that card, the poster paint the count's label takes. It may never be
+     put on an element wearing a band, a staleness or a severity colour: a halo
+     is a size, and a size that varies with a reading is a ramp.
+
+     ⚠️ **It takes NO INPUT**, on `.wl-swell`'s surviving argument below. Not a
+     depth, not a level, not `mode`, not the time of day. */
+  .wl-glow {
+    filter: drop-shadow(0 0 30px currentColor);
+  }
+
+  /* The instrument list scrolls inside a frame whose height is set by the map
+     beside it. A platform scrollbar there is a light-grey slab down the middle
+     of a dark page, so it is toned to the border colour — thin, and visible
+     enough to say "there is more below", which on this list is information. */
+  .wl-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .wl-scroll::-webkit-scrollbar {
+    width: 8px;
+  }
+  .wl-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .wl-scroll::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 999px;
+  }
+  .wl-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--ring);
+  }
+
+  /*
+   * The wall the landing page was pasted on.
+   *
+   * ⚠️ **TWO callers now, and both are DOCUMENT mastheads** —
+   * `about-sections.tsx` and `terms-sections.tsx`. The landing page it was
+   * built for is deleted, and `site-header.tsx` came off it on 2026-08-14:
+   * the instrument's masthead takes flat `--wl-panel`, because the argument
+   * for the texture was that the map and the landing page should read as one
+   * site and `/` is a sign-in screen with no chrome to match. **The class
+   * stays for the two pages that are documents rather than instruments.**
+   *
+   * ⚠️ **An inline SVG data URI, not an image file, and that is the same rule
+   * as the basemap and the alert rat** — this page has no third-party origin
+   * and no runtime fetch for decoration. It is also under 300 bytes, which is
+   * smaller than the request that would fetch a texture, so there is nothing
+   * to gain by making it a file either.
+   *
+   * The two colours are variables so a band can be darker than the one above
+   * it without a second copy of the geometry. `--wl-brick-mortar` is the gap,
+   * `--wl-brick-face` is the brick.
+   */
+  .wl-brick {
+    --wl-brick-mortar: #140f13;
+    --wl-brick-face: #241a1e;
+    background-color: var(--wl-brick-mortar);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='88' height='68'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Crect x='1' y='1' width='86' height='31'/%3E%3Crect x='-43' y='35' width='86' height='31'/%3E%3Crect x='45' y='35' width='86' height='31'/%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  /* ⚠️ **THREE decorative animations have been deleted from this file rather
+     than left behind**, and the precedent is worth keeping: dead decorative CSS
+     is how a stylesheet accumulates rules nobody dares touch because nothing
+     obviously uses them. All three are in the archived pre-public history.
+
+     - `.wl-drip` — the hero's paint drip, removed 2026-08-05.
+     - `.wl-pulse` — the freshness dot on the landing page's citywide status
+       card, removed 2026-08-14 with the landing page.
+     - `.wl-swell` — the waterline the graffiti rat's barrel stood in, in the
+       landing page's address section. Removed with it on 2026-08-14.
+
+     ⚠️ **`.wl-swell` carried a safety rule that the root `CLAUDE.md` listed
+     under Never, and the rule is retired rather than transferred.** It said the
+     animation may never take an input — no depth, no level, no `settled`, no
+     `mode`, no tide gauge — because it sat in the one section that also
+     rendered real FloodNet depths, and a water level there that takes an input
+     is a reading with no age, no plausibility and no scale beside it. It also
+     rested HIGH under `prefers-reduced-motion`, because that reader sees one
+     frame forever and water that has gone down is the claim this site never
+     makes.
+
+     **Both arguments still apply to anything shaped like it.** If a moving
+     water decoration ever returns anywhere on this site, it returns ungated, on
+     a clock, resting high, with a surface that is not a straight edge — and
+     ⚠️ **nothing in `./scripts/check` can reach CSS**, so this comment and the
+     review that reads it are the entire enforcement.
+
+     `.wl-urgent` below is what is left. It has one caller — `warning-block.tsx`,
+     which is unmounted with the rest of the on-page alert system — so it stays
+     on the same terms that file does. */
+}
+
+@keyframes wl-urgent-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Every animation in this file is decoration over information that is already
+   painted, so reduced motion takes the movement and never the meaning.
+
+   ⚠️ **The rest state of any animation added here is a DECISION, not a
+   leftover**, because a reduced-motion reader sees exactly one frame forever.
+   `.wl-urgent` rests at its loud value for that reason. */
+@media (prefers-reduced-motion: reduce) {
+  .wl-urgent {
+    animation: none;
+  }
+}

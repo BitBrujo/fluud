@@ -1,0 +1,14 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+httpx==0.28.1
+psycopg[binary]==3.2.3
+pydantic==2.10.4
+pydantic-settings==2.7.0
+# Neon Auth session verification — `waterline/auth.py`. The `[crypto]` extra
+# pulls `cryptography`, which is what actually checks an RS256/ES256 signature;
+# PyJWT alone can only handle HMAC and would leave every asymmetric token
+# unverifiable. Two packages on a list that was six lines, and the alternative
+# was hand-rolling JWKS parsing and signature checks, which is the last thing
+# in this repo that should be hand-rolled.
+PyJWT[crypto]==2.10.1
+

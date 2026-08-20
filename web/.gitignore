@@ -1,0 +1,60 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# design-sync — ⚠️ the WHOLE TREE is untracked as of 2026-08-20, and it used to
+# be only the machine state below it. It is the export surface for a
+# claude.ai/design project: an entry barrel, two shims, fixtures, 56 authored
+# previews and 16 woff2. **Nothing this app serves comes out of it** — it is
+# already `.dockerignore`d, so the image never saw it either — and it is the
+# owner's design tooling rather than part of the instrument.
+#
+# ⚠️ **It is still on disk and the `/design-sync` skill still runs**, which is
+# the point of untracking rather than deleting. What changed is that a clone
+# does not get it, so `web/CLAUDE.md`'s section on it describes something a
+# reader of this repo cannot see. That is stated at the section.
+#
+# ⚠️ `package.json`'s `"types": ".design-sync/entry.tsx"` is what lets the prop
+# contracts extract. It has no effect on Next and a clone missing the file
+# builds normally — verified 2026-08-20 by building with the tree moved aside.
+.design-sync/
+.ds-sync/
+ds-bundle/

@@ -1,0 +1,18 @@
+{
+  "_": [
+    "Which pose each level renders. Chosen by eye from the contact sheet:",
+    "  blender -b --factory-startup --python web/scripts/rat-bake.py -- sheet",
+    "  python3 web/scripts/rat-bake.py tile   # -> assets/black-rat/frames/contact.png",
+    "",
+    "Only the POSE lives here. The camera and lighting ramp are in rat-bake.py's",
+    "RAMP table, in code, because that ramp is how invariant 14 is enforced in",
+    "the image and it should not be tunable from a data file.",
+    "",
+    "clear must read indifferent, not friendly — the rat is not reassuring you,",
+    "it just has not left yet (invariant 1)."
+  ],
+  "clear": { "action": "idle_A1", "frame": 25 },
+  "watch": { "action": "idle_A3", "frame": 31 },
+  "warning": { "action": "walk_A3", "frame": 21 },
+  "emergency": { "action": "run_A2", "frame": 23 }
+}
